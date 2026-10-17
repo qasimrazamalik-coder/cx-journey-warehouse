@@ -1,0 +1,94 @@
+version: 2
+
+sources:
+  - name: crm
+    schema: raw_crm
+    description: CRM export (Salesforce-style). Lead timestamps are local to the lead, with the zone in a separate column.
+    tables:
+      - name: leads
+        columns:
+          - name: lead_id
+            data_tests: [unique, not_null]
+      - name: opportunities
+        columns:
+          - name: opportunity_id
+            data_tests: [unique, not_null]
+
+  - name: dialer
+    schema: raw_dialer
+    description: Outbound dialer export. The column layout depends on the client's dialer vendor (var dialer_format).
+    tables:
+      - name: call_attempts
+        description: Client A ("classic") layout. Disposition codes were renamed by the vendor on 2025-04-01.
+        config:
+          enabled: "{{ var('dialer_format', 'classic') == 'classic' }}"
+      - name: call_events
+        description: Client B ("events") layout. Epoch seconds and millisecond durations.
+        config:
+          enabled: "{{ var('dialer_format', 'classic') == 'events' }}"
+
+  - name: ccaas
+    schema: raw_ccaas
+    description: Contact-center platform export. One row per interaction leg; a transfer creates a new leg in the same session.
+    tables:
+      - name: interaction_legs
+        columns:
+          - name: leg_id
+            data_tests: [unique, not_null]
+
+  - name: ticketing
+    schema: raw_ticketing
+    tables:
+      - name: tickets
+        columns:
+          - name: ticket_id
+            data_tests: [unique, not_null]
+
+  - name: billing
+    schema: raw_billing
+    tables:
+      - name: subscriptions
+        columns:
+          - name: subscription_id
+            data_tests: [unique, not_null]
+
+  - name: hr
+    schema: raw_hr
+    description: HR roster change log. Each row is the agent's full state from effective_date onward.
+    tables:
+      - name: agent_roster_changes
+
+  - name: wfm
+    schema: raw_wfm
+    tables:
+      - name: agent_daily
+
+  - name: qa
+    schema: raw_qa
+    tables:
+      - name: evaluations
+        columns:
+          - name: evaluation_id
+            data_tests: [unique, not_null]
+
+  - name: marketing
+    schema: raw_marketing
+    tables:
+      - name: vendor_spend
+
+  - name: legacy_bi
+    schema: raw_legacy_bi
+    description: The client's current executive KPI pack, used only to calibrate the warehouse before go-live.
+    tables:
+      - name: monthly_kpis
+
+  - name: truth
+    schema: raw_truth
+    description: >
+      Simulation ground truth. Never used by production models, only by tests that
+      measure how well the warehouse logic recovers reality (for example identity resolution accuracy).
+    tables:
+      - name: lead_person
+      - name: account_person
+      - name: episodes
+      - name: session_episode

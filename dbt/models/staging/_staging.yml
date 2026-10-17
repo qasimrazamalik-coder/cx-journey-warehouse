@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: stg_crm__leads
+    description: CRM leads with normalised email/phone, UTC timestamps and a test-lead flag. Nothing is removed here.
+    columns:
+      - name: lead_id
+        data_tests: [unique, not_null]
+      - name: created_at_utc
+        data_tests: [not_null]
+  - name: stg_dialer__call_attempts
+    description: Dial attempts from either dialer layout, mapped to standard outcomes via the disposition_map seed.
+    columns:
+      - name: attempt_id
+        data_tests: [unique, not_null]
+  - name: stg_ccaas__interaction_legs
+    columns:
+      - name: leg_id
+        data_tests: [unique, not_null]
+      - name: channel
+        data_tests:
+          - accepted_values: {arguments: {values: [chat_bot, chat_agent, voice]}}
+  - name: stg_billing__subscriptions
+    columns:
+      - name: account_id
+        data_tests: [unique, not_null]

@@ -1,0 +1,7 @@
+cx_journey:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('CX_WAREHOUSE_PATH', '../warehouse.duckdb') }}"
+      threads: 4

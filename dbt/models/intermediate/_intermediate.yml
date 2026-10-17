@@ -1,0 +1,92 @@
+version: 2
+
+models:
+  - name: int_identity__records
+    description: Every record that carries a customer identifier (lead, account, contact session, ticket).
+
+  - name: int_identity__customer_map
+    description: >
+      Identity resolution output. Records connected through a shared normalised email or
+      phone get the same customer_key. Phones shared by more than three emails are not
+      used as links. Accuracy is tested against the simulation's ground truth.
+    columns:
+      - name: customer_key
+        data_tests: [not_null]
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [record_type, record_id]
+
+  - name: int_leads__deduplicated
+    description: Non-test leads with their customer and a duplicate flag (another lead for the same customer within 30 days).
+    columns:
+      - name: lead_id
+        data_tests: [unique, not_null]
+      - name: lead_group_id
+        data_tests: [not_null]
+
+  - name: int_lead_groups
+    description: One row per unique lead with dial activity across the lead and its duplicates.
+    columns:
+      - name: lead_group_id
+        data_tests: [unique, not_null]
+
+  - name: int_leads__speed_to_lead
+    description: Speed to lead in business minutes (and clock minutes for comparison).
+    columns:
+      - name: lead_group_id
+        data_tests: [unique, not_null]
+
+  - name: int_ccaas__sessions
+    description: One row per CCaaS session with legs rolled up and the customer resolved.
+    columns:
+      - name: session_id
+        data_tests: [unique, not_null]
+
+unit_tests:
+  - name: speed_to_lead_counts_only_open_minutes
+    description: >
+      Center hours are 08:00-20:00 ET, Monday-Saturday. Times below are UTC in January
+      (ET = UTC-5).
+    model: int_leads__speed_to_lead
+    given:
+      - input: ref('int_lead_groups')
+        rows:
+          # Same day, open hours: Mon 10:00 ET -> 10:07 ET = 7 minutes.
+          - {lead_group_id: same_day, created_at_utc: "2025-01-06 15:00:00", first_attempt_at_utc: "2025-01-06 15:07:00"}
+          # Arrives 23:00 ET Monday, dialed 08:10 ET Tuesday = 10 open minutes.
+          - {lead_group_id: overnight, created_at_utc: "2025-01-07 04:00:00", first_attempt_at_utc: "2025-01-07 13:10:00"}
+          # Arrives Sat 21:00 ET, dialed Mon 08:30 ET (Sunday closed) = 30 open minutes.
+          - {lead_group_id: weekend, created_at_utc: "2025-01-12 02:00:00", first_attempt_at_utc: "2025-01-13 13:30:00"}
+          # Arrives Mon 19:50 ET, dialed Tue 08:20 ET = 10 + 20 = 30 open minutes.
+          - {lead_group_id: spans_close, created_at_utc: "2025-01-07 00:50:00", first_attempt_at_utc: "2025-01-07 13:20:00"}
+          # Arrives Fri 19:00 ET, dialed Mon 09:00 ET = 60 (Fri) + 720 (Sat) + 60 (Mon) = 840.
+          - {lead_group_id: full_saturday, created_at_utc: "2025-01-11 00:00:00", first_attempt_at_utc: "2025-01-13 14:00:00"}
+    expect:
+      rows:
+        - {lead_group_id: same_day, speed_to_lead_business_minutes: 7, arrived_after_hours: false}
+        - {lead_group_id: overnight, speed_to_lead_business_minutes: 10, arrived_after_hours: true}
+        - {lead_group_id: weekend, speed_to_lead_business_minutes: 30, arrived_after_hours: true}
+        - {lead_group_id: spans_close, speed_to_lead_business_minutes: 30, arrived_after_hours: false}
+        - {lead_group_id: full_saturday, speed_to_lead_business_minutes: 840, arrived_after_hours: false}
+
+  - name: duplicate_leads_are_grouped_under_the_first_lead
+    model: int_leads__deduplicated
+    given:
+      - input: ref('stg_crm__leads')
+        rows:
+          - {lead_id: L1, email: a@x.com, created_at_utc: "2025-02-01 10:00:00", is_test_lead: false}
+          - {lead_id: L2, email: a@x.com, created_at_utc: "2025-02-03 10:00:00", is_test_lead: false}
+          - {lead_id: L3, email: a@x.com, created_at_utc: "2025-03-20 10:00:00", is_test_lead: false}
+          - {lead_id: L4, email: t@test.northwind.example, created_at_utc: "2025-02-01 10:00:00", is_test_lead: true}
+      - input: ref('int_identity__customer_map')
+        rows:
+          - {record_type: lead, record_id: L1, customer_key: c1}
+          - {record_type: lead, record_id: L2, customer_key: c1}
+          - {record_type: lead, record_id: L3, customer_key: c1}
+          - {record_type: lead, record_id: L4, customer_key: c2}
+    expect:
+      rows:
+        - {lead_id: L1, is_duplicate: false, lead_group_id: L1}
+        - {lead_id: L2, is_duplicate: true, lead_group_id: L1}
+        - {lead_id: L3, is_duplicate: false, lead_group_id: L3}

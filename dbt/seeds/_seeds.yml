@@ -1,0 +1,31 @@
+version: 2
+
+seeds:
+  - name: disposition_map
+    description: >
+      Maps every dialer vendor's disposition codes, old and new, to one standard
+      outcome. The classic dialer renamed its codes on 2025-04-01; both versions
+      stay here so history keeps working.
+    config:
+      column_types:
+        is_connected: boolean
+        is_sale: boolean
+    columns:
+      - name: source_code
+        data_tests: [unique, not_null]
+      - name: outcome
+        data_tests:
+          - accepted_values:
+              arguments:
+                  values: [no_answer, voicemail, not_interested, callback, sale, do_not_call, bad_number]
+
+  - name: intent_taxonomy
+    description: >
+      Three-level contact-driver hierarchy. is_avoidable marks contacts that should
+      not need a person at all (fixable upstream); upstream_owner is who would fix it.
+    config:
+      column_types:
+        is_avoidable: boolean
+    columns:
+      - name: intent_code
+        data_tests: [unique, not_null]

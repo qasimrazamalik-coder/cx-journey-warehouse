@@ -1,0 +1,22 @@
+source_code,dialer_format,code_version,outcome,is_connected,is_sale
+NA,classic,v1 (until 2025-03-31),no_answer,false,false
+VM,classic,v1 (until 2025-03-31),voicemail,false,false
+CT,classic,v1 (until 2025-03-31),not_interested,true,false
+CB,classic,v1 (until 2025-03-31),callback,true,false
+SALE,classic,v1 (until 2025-03-31),sale,true,true
+DNC,classic,v1 (until 2025-03-31),do_not_call,true,false
+BAD,classic,v1 (until 2025-03-31),bad_number,false,false
+NO_ANSWER,classic,v2 (from 2025-04-01),no_answer,false,false
+VOICEMAIL,classic,v2 (from 2025-04-01),voicemail,false,false
+NOT_INTERESTED,classic,v2 (from 2025-04-01),not_interested,true,false
+CALLBACK,classic,v2 (from 2025-04-01),callback,true,false
+SOLD,classic,v2 (from 2025-04-01),sale,true,true
+DO_NOT_CALL,classic,v2 (from 2025-04-01),do_not_call,true,false
+BAD_NUMBER,classic,v2 (from 2025-04-01),bad_number,false,false
+no_answer,events,v1,no_answer,false,false
+voicemail,events,v1,voicemail,false,false
+not_interested,events,v1,not_interested,true,false
+callback,events,v1,callback,true,false
+sold,events,v1,sale,true,true
+do_not_call,events,v1,do_not_call,true,false
+bad_number,events,v1,bad_number,false,false

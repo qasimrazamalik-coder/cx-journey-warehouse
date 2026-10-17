@@ -1,0 +1,504 @@
+version: 2
+
+# Governed metric layer (dbt Semantic Layer / MetricFlow spec).
+# Every KPI is defined once here. BI, the monthly business review and AI agents
+# query these definitions instead of writing their own SQL.
+
+semantic_models:
+  - name: lead_journey
+    description: Unique leads and their funnel outcomes.
+    model: ref('fct_lead_journey')
+    defaults:
+      agg_time_dimension: created_date
+    entities:
+      - name: lead
+        type: primary
+        expr: lead_id
+      - name: customer
+        type: foreign
+        expr: customer_key
+      - name: vendor
+        type: foreign
+        expr: vendor_name
+    dimensions:
+      - name: created_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: campaign_name
+        type: categorical
+      - name: speed_to_lead_band
+        type: categorical
+      - name: first_attempt_site
+        type: categorical
+      - name: state
+        type: categorical
+      - name: arrived_after_hours
+        type: categorical
+    measures:
+      - name: unique_leads
+        description: Unique leads (first lead per person within the 30-day duplicate window).
+        agg: count
+        expr: lead_id
+      - name: contacted_leads
+        agg: sum
+        expr: contacted_count
+      - name: qualified_leads
+        agg: sum
+        expr: qualified_count
+        create_metric: true
+      - name: sold_leads
+        agg: sum
+        expr: sold_count
+      - name: activated_leads
+        agg: sum
+        expr: activated_count
+      - name: sold_not_activated_leads
+        agg: sum
+        expr: case when is_sold_not_activated then 1 else 0 end
+        create_metric: true
+      - name: attempted_leads
+        agg: sum
+        expr: case when first_attempt_at_utc is not null then 1 else 0 end
+        create_metric: true
+      - name: speed_to_lead_minutes_total
+        agg: sum
+        expr: speed_to_lead_business_minutes
+        create_metric: true
+      - name: duplicate_leads
+        agg: sum
+        expr: duplicate_lead_count
+      - name: booked_annual_value_usd
+        agg: sum
+        expr: won_amount_usd
+
+  - name: lead_vendors
+    description: Conformed vendor dimension so lead outcomes and spend can be compared by vendor.
+    model: ref('dim_lead_vendor')
+    entities:
+      - name: vendor
+        type: primary
+        expr: vendor_name
+    dimensions:
+      - name: vendor_name
+        type: categorical
+
+  - name: marketing_spend
+    description: Lead purchase spend by vendor, campaign and day.
+    model: ref('fct_marketing_spend')
+    defaults:
+      agg_time_dimension: spend_date
+    entities:
+      - name: spend
+        type: primary
+        expr: spend_key
+      - name: vendor
+        type: foreign
+        expr: vendor_name
+    dimensions:
+      - name: spend_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: spend_campaign_name
+        type: categorical
+        expr: campaign_name
+    measures:
+      - name: lead_spend_usd
+        agg: sum
+        expr: spend_usd
+
+  - name: contacts
+    description: Customer contacts (sessions) across bot, chat and voice, with outcome-based resolution.
+    model: ref('fct_contacts')
+    defaults:
+      agg_time_dimension: contact_date
+    entities:
+      - name: contact
+        type: primary
+        expr: session_id
+      - name: customer
+        type: foreign
+        expr: customer_key
+      - name: contact_driver
+        type: foreign
+        expr: intent_code
+    dimensions:
+      - name: contact_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: handling_path
+        type: categorical
+      - name: entry_channel
+        type: categorical
+      - name: last_queue_name
+        type: categorical
+    measures:
+      - name: contacts
+        agg: count
+        expr: session_id
+      - name: agent_handled_contacts
+        agg: sum
+        expr: agent_handled_count
+      - name: agent_handle_seconds_total
+        agg: sum
+        expr: case when is_agent_handled then agent_handle_seconds else 0 end
+        create_metric: true
+      - name: fcr_eligible_contacts
+        agg: sum
+        expr: fcr_eligible_count
+        create_metric: true
+      - name: fcr_resolved_contacts
+        agg: sum
+        expr: fcr_resolved_count
+        create_metric: true
+      - name: resolution_eligible_contacts
+        agg: sum
+        expr: resolution_eligible_count
+        create_metric: true
+      - name: resolved_contacts
+        agg: sum
+        expr: resolved_count
+        create_metric: true
+      - name: repeat_contacts
+        agg: sum
+        expr: repeat_contact_count
+        create_metric: true
+      - name: bot_sessions
+        agg: sum
+        expr: bot_session_count
+      - name: bot_contained_sessions
+        agg: sum
+        expr: bot_contained_count
+        create_metric: true
+      - name: bot_sessions_observable
+        agg: sum
+        expr: bot_session_observable_count
+        create_metric: true
+      - name: bot_contained_resolved_sessions
+        agg: sum
+        expr: bot_contained_resolved_count
+        create_metric: true
+      - name: cost_to_serve_usd_total
+        agg: sum
+        expr: cost_to_serve_usd
+        create_metric: true
+      - name: churn_observable_contacts
+        agg: sum
+        expr: case when is_churn_observable and not is_abandoned then 1 else 0 end
+        create_metric: true
+      - name: churned_after_contact
+        agg: sum
+        expr: case when is_churn_observable and not is_abandoned and cancelled_within_30d then 1 else 0 end
+        create_metric: true
+
+  - name: contact_drivers
+    description: Contact-driver taxonomy.
+    model: ref('dim_contact_driver')
+    entities:
+      - name: contact_driver
+        type: primary
+        expr: intent_code
+    dimensions:
+      - name: driver_l1
+        type: categorical
+      - name: driver_l2
+        type: categorical
+      - name: driver_l3
+        type: categorical
+      - name: is_avoidable
+        type: categorical
+      - name: upstream_owner
+        type: categorical
+
+  - name: agent_days
+    description: Agent workforce and productivity by day.
+    model: ref('fct_agent_day')
+    defaults:
+      agg_time_dimension: work_date
+    entities:
+      - name: agent_day
+        type: primary
+        expr: agent_id || '|' || cast(work_date as varchar)
+      - name: agent
+        type: foreign
+        expr: agent_id
+    dimensions:
+      - name: work_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: site
+        type: categorical
+      - name: role
+        type: categorical
+      - name: tier
+        type: categorical
+      - name: supervisor_id
+        type: categorical
+    measures:
+      - name: scheduled_minutes_total
+        agg: sum
+        expr: scheduled_minutes
+        create_metric: true
+      - name: adherent_minutes_total
+        agg: sum
+        expr: adherent_minutes
+        create_metric: true
+      - name: paid_hours_total
+        agg: sum
+        expr: paid_hours
+        create_metric: true
+      - name: labor_cost_usd_total
+        agg: sum
+        expr: labor_cost_usd
+      - name: dial_attempts_total
+        agg: sum
+        expr: dial_attempts
+      - name: agent_sales_total
+        agg: sum
+        expr: sales
+        create_metric: true
+
+metrics:
+  # ----- Revenue funnel ----------------------------------------------------
+  - name: unique_leads
+    label: Unique leads
+    description: First lead per person within a 30-day window. Test leads and vendor resubmissions excluded.
+    type: simple
+    type_params:
+      measure: unique_leads
+
+  - name: contacted_leads
+    label: Contacted leads
+    description: Unique leads reached by a live conversation on at least one dial attempt.
+    type: simple
+    type_params:
+      measure: contacted_leads
+
+  - name: sold_leads
+    label: Sales
+    description: Unique leads with a won opportunity.
+    type: simple
+    type_params:
+      measure: sold_leads
+
+  - name: activated_leads
+    label: Activations
+    description: Sales whose customer started a subscription within 45 days.
+    type: simple
+    type_params:
+      measure: activated_leads
+
+  - name: contact_rate
+    label: Contact rate
+    description: Contacted leads / unique leads. Per lead, not per dial attempt.
+    type: ratio
+    type_params:
+      numerator: contacted_leads
+      denominator: unique_leads
+
+  - name: qualification_rate
+    label: Qualification rate
+    description: Qualified leads (an opportunity was created) / contacted leads.
+    type: ratio
+    type_params:
+      numerator: qualified_leads
+      denominator: contacted_leads
+
+  - name: conversion_rate
+    label: Conversion rate
+    description: Sales / unique leads, by lead creation date (cohort view).
+    type: ratio
+    type_params:
+      numerator: sold_leads
+      denominator: unique_leads
+
+  - name: activation_rate
+    label: Activation rate
+    description: Activations / sales.
+    type: ratio
+    type_params:
+      numerator: activated_leads
+      denominator: sold_leads
+
+  - name: sold_not_activated_rate
+    label: Sold but not activated
+    description: Share of sales that never became an active subscription (revenue leakage after the sale).
+    type: ratio
+    type_params:
+      numerator: sold_not_activated_leads
+      denominator: sold_leads
+
+  - name: avg_speed_to_lead_minutes
+    label: Average speed to lead (business minutes)
+    description: Average open minutes from lead arrival (or next opening) to first dial attempt, over attempted leads.
+    type: ratio
+    type_params:
+      numerator: speed_to_lead_minutes_total
+      denominator: attempted_leads
+
+  - name: duplicate_lead_rate
+    label: Duplicate lead rate
+    description: Duplicate lead records / all non-test lead records.
+    type: derived
+    type_params:
+      expr: duplicate_leads / (duplicate_leads + unique_leads)
+      metrics:
+        - name: duplicate_leads
+        - name: unique_leads
+
+  - name: duplicate_leads
+    label: Duplicate leads
+    description: Later lead records for a person who already had a lead within 30 days.
+    type: simple
+    type_params:
+      measure: duplicate_leads
+
+  - name: booked_annual_value_usd
+    label: Booked annual value (USD)
+    description: Sum of won opportunity amounts (12 months of subscription value).
+    type: simple
+    type_params:
+      measure: booked_annual_value_usd
+
+  - name: lead_spend_usd
+    label: Lead spend (USD)
+    description: Amount billed by lead vendors.
+    type: simple
+    type_params:
+      measure: lead_spend_usd
+
+  - name: cost_per_lead_usd
+    label: Cost per unique lead (USD)
+    type: ratio
+    type_params:
+      numerator: lead_spend_usd
+      denominator: unique_leads
+
+  - name: cost_per_sale_usd
+    label: Lead cost per sale (USD)
+    description: Lead spend / sales. A vendor that is cheap per lead can be the most expensive per sale.
+    type: ratio
+    type_params:
+      numerator: lead_spend_usd
+      denominator: sold_leads
+
+  - name: cost_per_activation_usd
+    label: Lead cost per activation (USD)
+    description: Lead spend / activations. Acquisition cost on lead spend only (excludes selling labor).
+    type: ratio
+    type_params:
+      numerator: lead_spend_usd
+      denominator: activated_leads
+
+  # ----- Customer experience and cost to serve ------------------------------
+  - name: contacts
+    label: Contacts
+    description: Customer contacts (sessions) across all channels, including abandoned calls.
+    type: simple
+    type_params:
+      measure: contacts
+
+  - name: agent_handled_contacts
+    label: Agent-handled contacts
+    type: simple
+    type_params:
+      measure: agent_handled_contacts
+
+  - name: aht_seconds
+    label: Average handle time (seconds)
+    description: Talk + hold + wrap across all agent legs of a contact, per agent-handled contact.
+    type: ratio
+    type_params:
+      numerator: agent_handle_seconds_total
+      denominator: agent_handled_contacts
+
+  - name: fcr_rate
+    label: First-contact resolution
+    description: Agent-handled contacts with no repeat contact or ticket on the same driver within 7 days. Only contacts at least 7 days old count.
+    type: ratio
+    type_params:
+      numerator: fcr_resolved_contacts
+      denominator: fcr_eligible_contacts
+
+  - name: resolution_rate
+    label: Resolution rate (all channels)
+    description: Contacts with no repeat contact or ticket on the same driver within 7 days, across bot and agents.
+    type: ratio
+    type_params:
+      numerator: resolved_contacts
+      denominator: resolution_eligible_contacts
+
+  - name: repeat_contact_rate
+    label: Repeat contact rate
+    type: ratio
+    type_params:
+      numerator: repeat_contacts
+      denominator: resolution_eligible_contacts
+
+  - name: bot_sessions
+    label: Bot sessions
+    type: simple
+    type_params:
+      measure: bot_sessions
+
+  - name: bot_containment_rate
+    label: Bot containment (vendor definition)
+    description: Bot sessions that never reached an agent / bot sessions. Says nothing about whether the problem was solved.
+    type: ratio
+    type_params:
+      numerator: bot_contained_sessions
+      denominator: bot_sessions
+
+  - name: bot_true_resolution_rate
+    label: Bot true resolution
+    description: Bot sessions that were contained AND had no repeat contact or ticket on the same driver within 7 days / observable bot sessions.
+    type: ratio
+    type_params:
+      numerator: bot_contained_resolved_sessions
+      denominator: bot_sessions_observable
+
+  - name: cost_to_serve_usd
+    label: Cost to serve (USD)
+    description: Agent labor (handle time x loaded hourly rate) plus bot session cost.
+    type: simple
+    type_params:
+      measure: cost_to_serve_usd_total
+
+  - name: cost_per_contact_usd
+    label: Cost per contact (USD)
+    type: ratio
+    type_params:
+      numerator: cost_to_serve_usd_total
+      denominator: contacts
+
+  - name: churn_after_contact_rate
+    label: 30-day churn after contact
+    description: Share of contacts whose customer cancelled within 30 days (contacts at least 30 days old).
+    type: ratio
+    type_params:
+      numerator: churned_after_contact
+      denominator: churn_observable_contacts
+
+  # ----- Workforce ----------------------------------------------------------
+  - name: schedule_adherence
+    label: Schedule adherence
+    type: ratio
+    type_params:
+      numerator: adherent_minutes_total
+      denominator: scheduled_minutes_total
+
+  - name: labor_cost_usd
+    label: Labor cost (USD)
+    type: simple
+    type_params:
+      measure: labor_cost_usd_total
+
+  - name: sales_per_paid_hour
+    label: Sales per paid hour
+    type: ratio
+    type_params:
+      numerator: agent_sales_total
+      denominator: paid_hours_total

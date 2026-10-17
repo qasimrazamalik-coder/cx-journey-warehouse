@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: build (${{ matrix.dialer_format }} dialer)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # classic = client A's dialer export, events = client B's. Same models, config only.
+        dialer_format: [classic, events]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Generator tests
+        run: pytest -q
+      - name: Generate sources, dbt build (models, data tests, unit tests), reports
+        run: python scripts/build.py --scale 0.15 --dialer-format ${{ matrix.dialer_format }}
+      - name: Incremental run picks up late-arriving rows without duplicates
+        working-directory: dbt
+        env:
+          CX_WAREHOUSE_PATH: ${{ github.workspace }}/warehouse.duckdb
+        run: |
+          python -c "from dbt.cli.main import cli; cli()" run --profiles-dir . --select fct_dial_attempts --vars "{dialer_format: ${{ matrix.dialer_format }}}"
+          python -c "from dbt.cli.main import cli; cli()" test --profiles-dir . --select fct_dial_attempts assert_dial_attempts_reconcile --vars "{dialer_format: ${{ matrix.dialer_format }}}"

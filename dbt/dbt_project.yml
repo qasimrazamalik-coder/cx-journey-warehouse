@@ -1,0 +1,50 @@
+name: cx_journey
+version: "1.0.0"
+config-version: 2
+profile: cx_journey
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+analysis-paths: ["analyses"]
+target-path: "target"
+clean-targets: ["target", "logs"]
+
+vars:
+  # Which dialer export this client sends: classic (client A) or events (client B).
+  dialer_format: classic
+  # Contact-center local time zone, used for business hours and reporting dates.
+  center_timezone: America/New_York
+  open_hour: 8
+  close_hour: 20
+  # A contact is a repeat if the same customer contacts again about the same
+  # driver within this many days.
+  repeat_window_days: 7
+  # A later lead for the same person within this many days is a duplicate.
+  duplicate_lead_window_days: 30
+  # Late-arriving dialer rows: incremental runs reprocess this many days.
+  incremental_lookback_days: 7
+  # Assumed cost of one bot session, USD (vendor contract; used for cost to serve).
+  bot_cost_per_session_usd: 0.85
+
+models:
+  cx_journey:
+    +materialized: table
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +schema: intermediate
+    marts:
+      +schema: marts
+    calibration:
+      +schema: calibration
+
+seeds:
+  cx_journey:
+    +schema: reference
+
+tests:
+  cx_journey:
+    +severity: error

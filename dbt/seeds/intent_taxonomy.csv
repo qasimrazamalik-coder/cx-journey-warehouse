@@ -1,0 +1,17 @@
+intent_code,driver_l1,driver_l2,driver_l3,is_avoidable,upstream_owner
+ACC_PWD_RESET,Account,Access,Password reset,true,Digital product
+ACC_ADDR,Account,Profile,Update address,true,Digital product
+ACC_UPGRADE,Account,Plan,Upgrade plan,false,Sales
+ACC_DOWNGRADE,Account,Plan,Downgrade plan,false,Retention
+ACC_CANCEL,Account,Cancellation,Cancel service,false,Retention
+BIL_CARD,Billing,Payment,Update card,true,Digital product
+BIL_PRORATION,Billing,Unexpected charge,Proration after plan change,true,Billing policy
+BIL_REFUND,Billing,Refund,Refund status,true,Billing operations
+BIL_DISPUTE,Billing,Dispute,Charge dispute,false,Billing operations
+TEC_OUTAGE,Technical,Connectivity,Outage,true,Network operations
+TEC_SLOW,Technical,Speed,Slow speed,false,Network operations
+TEC_ROUTER,Technical,Equipment,Router setup,true,Field and install
+ORD_INSTALL_STATUS,Orders,Install,Install status,true,Field and install
+ORD_RESCHEDULE,Orders,Install,Reschedule install,false,Field and install
+ORD_DELIVERY,Orders,Delivery,Equipment delivery status,true,Logistics
+GEN_COVERAGE,General,Info,Coverage check,true,Digital product

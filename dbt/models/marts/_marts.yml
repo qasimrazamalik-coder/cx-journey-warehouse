@@ -1,0 +1,117 @@
+version: 2
+
+models:
+  - name: dim_agent
+    description: Agents as slowly changing dimension (type 2). One row per agent per roster version; valid_to is exclusive.
+    columns:
+      - name: agent_version_key
+        data_tests: [unique, not_null]
+      - name: agent_id
+        data_tests: [not_null]
+      - name: role
+        data_tests:
+          - accepted_values: {arguments: {values: [sales, support]}}
+      - name: tier
+        data_tests:
+          - accepted_values: {arguments: {values: [1, 2, 3], quote: false}}
+
+  - name: dim_contact_driver
+    description: Contact-driver taxonomy (three levels) with avoidability and upstream owner.
+    columns:
+      - name: intent_code
+        data_tests: [unique, not_null]
+
+  - name: dim_customer
+    description: One row per resolved customer with a billing account.
+    columns:
+      - name: customer_key
+        data_tests: [unique, not_null]
+
+  - name: dim_lead_vendor
+    columns:
+      - name: vendor_name
+        data_tests: [unique, not_null]
+
+  - name: fct_dial_attempts
+    description: One row per outbound dial attempt, vendor-independent, with the agent's attributes as of the attempt date.
+    columns:
+      - name: attempt_id
+        data_tests: [unique, not_null]
+      - name: outcome
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                  values: [no_answer, voicemail, not_interested, callback, sale, do_not_call, bad_number]
+      - name: agent_version_key
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_agent'), field: agent_version_key}}
+
+  - name: fct_lead_journey
+    description: >
+      Accumulating snapshot, one row per unique lead (a person's first lead within the
+      duplicate window). Tracks created, first attempt, contact, qualification, sale and
+      activation. Speed to lead is in business minutes.
+    columns:
+      - name: lead_id
+        data_tests: [unique, not_null]
+      - name: customer_key
+        data_tests: [not_null]
+      - name: vendor_name
+        data_tests:
+          - relationships: {arguments: {to: ref('dim_lead_vendor'), field: vendor_name}}
+      - name: speed_to_lead_business_minutes
+        description: Open minutes from when the lead could first be worked to the first dial attempt.
+      - name: speed_to_lead_band
+        data_tests:
+          - accepted_values:
+              arguments:
+                  values: ['0-5 min', '5-15 min', '15-30 min', '30-60 min', '60+ min', 'never attempted']
+
+  - name: fct_contacts
+    description: >
+      One row per customer contact (CCaaS session). is_resolved is outcome-based: no
+      repeat contact and no ticket about the same driver within the repeat window.
+      Use the *_count columns (already filtered to observable contacts) for rates.
+    columns:
+      - name: session_id
+        data_tests: [unique, not_null]
+      - name: intent_code
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: ref('dim_contact_driver'), field: intent_code}}
+      - name: handling_path
+        data_tests:
+          - accepted_values: {arguments: {values: [abandoned, bot only, bot then agent, agent]}}
+      - name: cost_to_serve_usd
+        data_tests: [not_null]
+
+  - name: fct_agent_day
+    description: One row per agent per scheduled work day, with the agent's tier and supervisor as of that day.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [agent_id, work_date]
+    columns:
+      - name: agent_version_key
+        data_tests: [not_null]
+
+  - name: fct_marketing_spend
+    columns:
+      - name: spend_key
+        data_tests: [unique, not_null]
+
+  - name: mart_monthly_kpis
+    description: Governed monthly KPIs (contact-center local month), the counterpart of the client's legacy executive pack.
+    columns:
+      - name: report_month
+        data_tests: [unique, not_null]
+
+  - name: metricflow_time_spine
+    description: Daily time spine for the semantic layer.
+    time_spine:
+      standard_granularity_column: date_day
+    columns:
+      - name: date_day
+        granularity: day
