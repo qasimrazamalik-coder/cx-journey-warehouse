@@ -21,9 +21,9 @@ gap traces to a specific cause, and each bridge closes to zero
 |---|---|---|---|
 | Leads per month | 7,987 | 6,877 | Test leads and vendor resubmissions counted as leads |
 | Contact rate | 9.9% | 66.3% | Dialer renamed its disposition codes on 1 April; the legacy report has shown 0% since, and nobody was alerted |
-| AHT | 450s | 616s | Wrap time dropped, and each leg of a transferred call counted as a contact |
-| FCR | 90.2% | 82.8% | Agents' own "resolved" flag vs. no repeat contact on the same driver within 7 days |
-| Bot containment vs. true resolution | 85.5% | 59.1% | Containment only means the customer never reached an agent |
+| AHT | 455s | 620s | Wrap time dropped, and each leg of a transferred call counted as a contact |
+| FCR | 89.4% | 82.6% | Agents' own "resolved" flag vs. no repeat contact on the same driver within 7 days |
+| Bot containment vs. true resolution | 85.3% | 60.5% | Containment only means the customer never reached an agent |
 
 The same model surfaces where revenue leaks:
 
@@ -34,8 +34,8 @@ The same model surfaces where revenue leaks:
   except Phoenix-routed leads arriving between 14:00 and 16:00 ET (the site's lunch
   window): about 70 minutes. Conversion falls from 12.4% (dialed within 5 minutes) to
   5.2% (after 60 minutes).
-- **The bot's worst drivers.** It reports 86% containment on charge disputes and
-  proration questions, yet only 36 to 40% of those customers are actually done.
+- **The bot's worst drivers.** It reports 80 to 87% containment on charge disputes and
+  proration questions, yet only about 37% of those customers are actually done.
 
 ## Architecture
 
@@ -76,7 +76,7 @@ Decisions and the options rejected are in [`docs/adr/`](docs/adr).
 `dbt build` runs 114 checks; the build fails if any one fails:
 
 - **Identity resolution accuracy** against ground truth: 99.6% purity, 99.99%
-  completeness on 86,821 records (`assert_identity_resolution_accuracy`, gate 99%).
+  completeness on 86,480 records (`assert_identity_resolution_accuracy`, gate 99%).
 - **Calibration bridges close to zero** (`assert_calibration_bridges_close`).
 - **No dial attempt lost or duplicated** between staging and the incremental fact.
 - **Every disposition code mapped**: a vendor renaming codes again fails the build

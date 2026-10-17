@@ -474,11 +474,15 @@ class Simulator:
                         "status": "solved" if rng.random() < 0.6 else "open",
                         "solved_at": created + timedelta(days=float(rng.uniform(1, 6))) if rng.random() < 0.6 else None,
                     })
-            if rng.random() < intent.churn_if_unresolved * (1.3 if bot_contained_unresolved else 1.0):
+            if rng.random() < intent.churn_if_unresolved * (2.0 if bot_contained_unresolved else 1.0):
                 self.cancel(sub, ts + timedelta(days=float(rng.uniform(1, 30))), "Service experience")
-        elif intent.code == "ACC_CANCEL" and rng.random() < 0.55:
-            # "Resolved" for a cancel request often means the cancellation was processed.
-            self.cancel(sub, ts + timedelta(days=float(rng.uniform(0, 3))), "Requested cancellation")
+        else:
+            if bot_contained_unresolved and rng.random() < 0.08:
+                # Solved in the end, but only after the bot claimed it was solved: some leave anyway.
+                self.cancel(sub, ts + timedelta(days=float(rng.uniform(2, 30))), "Service experience")
+            if intent.code == "ACC_CANCEL" and rng.random() < 0.55:
+                # "Resolved" for a cancel request often means the cancellation was processed.
+                self.cancel(sub, ts + timedelta(days=float(rng.uniform(0, 3))), "Requested cancellation")
         self.tables["truth__episodes"].append({
             "episode_id": episode_id, "person_id": person["person_id"], "account_id": sub["account_id"],
             "intent_code": intent.code, "first_channel": first_channel, "contacts": contacts,

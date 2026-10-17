@@ -1,6 +1,6 @@
 # Go-live calibration report
 
-Generated 2026-10-17 from the warehouse build. Data: Northwind Connect, a **fictional** company simulated by `generator/` (January to June 2025). Every figure below is reproducible with `python scripts/build.py`.
+Generated 2026-10-18 from the warehouse build. Data: Northwind Connect, a **fictional** company simulated by `generator/` (January to June 2025). Every figure below is reproducible with `python scripts/build.py`.
 
 Before go-live, every executive KPI is recalculated from raw source data and reconciled to the client's current report. Each gap is explained by a specific definition or data defect, and each bridge must close to zero; the dbt test `assert_calibration_bridges_close` fails the build if one does not.
 
@@ -11,10 +11,10 @@ Before go-live, every executive KPI is recalculated from raw source data and rec
 | Leads | 7,987 | 6,877 | Legacy counts test leads and vendor resubmissions; governed counts unique people within a 30-day window. |
 | Contact rate | 9.9% | 66.3% | Legacy is per dial attempt and ignores disposition codes renamed on 2025-04-01; governed is the share of unique leads reached. |
 | Conversion rate | 8.5% | 9.8% | Legacy divides wins closed in the month by every lead row; governed follows each unique lead to its own outcome. |
-| Handled contacts | 2,264 | 1,888 | Legacy counts agent legs, so a transfer counts twice; governed counts customer contacts. |
-| AHT (seconds) | 450s | 616s | Legacy drops wrap time and averages per leg; governed is talk + hold + wrap per handled contact. |
-| FCR | 90.2% | 82.8% | Legacy is the share of legs agents marked resolved; governed checks for a repeat contact or ticket on the same driver within 7 days. |
-| Bot containment | 85.5% | 85.5% | Definitions match (vendor flag); small gaps come from UTC vs local month bucketing. See bot true resolution for the outcome view. |
+| Handled contacts | 2,218 | 1,859 | Legacy counts agent legs, so a transfer counts twice; governed counts customer contacts. |
+| AHT (seconds) | 455s | 620s | Legacy drops wrap time and averages per leg; governed is talk + hold + wrap per handled contact. |
+| FCR | 89.4% | 82.6% | Legacy is the share of legs agents marked resolved; governed checks for a repeat contact or ticket on the same driver within 7 days. |
+| Bot containment | 85.3% | 85.2% | Definitions match (vendor flag); small gaps come from UTC vs local month bucketing. See bot true resolution for the outcome view. |
 
 ## Bridge 1: leads
 
@@ -35,12 +35,12 @@ Legacy averages talk + hold per agent leg. The governed AHT adds wrap time and d
 
 | Month | Legacy | Add wrap | Per contact, not per leg | Month bucketing | Governed |
 |---|---|---|---|---|---|
-| Jan 2025 | 438s | +64s | +103s | 0s | 605s |
-| Feb 2025 | 462s | +64s | +102s | +2s | 629s |
-| Mar 2025 | 454s | +64s | +100s | -2s | 617s |
-| Apr 2025 | 444s | +65s | +102s | +1s | 612s |
-| May 2025 | 450s | +65s | +101s | -1s | 615s |
-| Jun 2025 | 451s | +64s | +105s | 0s | 620s |
+| Jan 2025 | 456s | +65s | +96s | 0s | 618s |
+| Feb 2025 | 459s | +65s | +105s | -1s | 628s |
+| Mar 2025 | 455s | +66s | +96s | 0s | 617s |
+| Apr 2025 | 454s | +65s | +99s | +1s | 618s |
+| May 2025 | 448s | +64s | +105s | 0s | 617s |
+| Jun 2025 | 455s | +64s | +101s | 0s | 620s |
 
 ## Bridge 3: contact rate
 
@@ -59,12 +59,12 @@ The legacy report only recognises the dialer's original disposition codes. The v
 
 | Month | Unique leads | Contact rate | Conversion | Median speed to lead | AHT | FCR | Bot containment | Bot true resolution |
 |---|---|---|---|---|---|---|---|---|
-| Jan 2025 | 7,236 | 68.3% | 10.9% | 8 min | 605s | 83.0% | 86.3% | 59.4% |
-| Feb 2025 | 6,581 | 68.9% | 11.7% | 8 min | 629s | 83.9% | 84.7% | 58.6% |
-| Mar 2025 | 6,936 | 65.6% | 9.8% | 8 min | 617s | 82.7% | 86.1% | 60.0% |
-| Apr 2025 | 7,097 | 65.3% | 8.9% | 8 min | 612s | 82.5% | 84.6% | 59.7% |
-| May 2025 | 7,234 | 64.9% | 9.0% | 8 min | 615s | 83.1% | 85.8% | 59.2% |
-| Jun 2025 | 6,178 | 64.5% | 8.7% | 8 min | 620s | 81.7% | 85.5% | 57.3% |
+| Jan 2025 | 7,236 | 68.3% | 10.9% | 8 min | 618s | 82.8% | 85.2% | 59.9% |
+| Feb 2025 | 6,581 | 68.9% | 11.7% | 8 min | 628s | 82.9% | 85.3% | 59.3% |
+| Mar 2025 | 6,936 | 65.6% | 9.8% | 8 min | 617s | 81.2% | 85.8% | 59.3% |
+| Apr 2025 | 7,097 | 65.3% | 8.9% | 8 min | 618s | 83.7% | 84.6% | 61.6% |
+| May 2025 | 7,234 | 64.9% | 9.0% | 8 min | 617s | 81.4% | 86.2% | 61.7% |
+| Jun 2025 | 6,178 | 64.5% | 8.7% | 8 min | 620s | 83.6% | 84.3% | 60.8% |
 
 June FCR and bot resolution cover contacts up to 23 June: later contacts have not had their 7-day repeat window yet.
 

@@ -6,8 +6,8 @@
 Two "resolved" signals exist in the sources: the agent's wrap flag
 (`agent_marked_resolved`) and the bot vendor's containment flag. Both describe what
 the system recorded, not what happened to the customer. In this data agents mark about
-90% of contacts resolved and the bot reports about 86% containment, while outcome-based
-FCR is about 83% and bot true resolution about 59%.
+89% of contacts resolved and the bot reports about 85% containment, while outcome-based
+FCR is about 83% and bot true resolution about 60%.
 
 ## Decision
 A contact is resolved when the same customer does not contact us again about the same
